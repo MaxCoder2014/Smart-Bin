@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SmartBin - AI Waste Scanner</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eaf7ee;
+            text-align: center;
+            padding: 30px;
+            color: #234b32;
+        }
+
+        .container {
+            background: white;
+            max-width: 450px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #238447;
+            font-size: 36px;
+        }
+
+        button {
+            background-color: #238447;
+            color: white;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            cursor: pointer;
+            margin: 8px;
+        }
+
+        button:hover {
+            background-color: #176532;
+        }
+
+        video, canvas {
+            width: 100%;
+            max-width: 380px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 19px;
+            font-weight: bold;
+        }
+
+        #status {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🌱 SmartBin</h1>
+
+    <h2>Your AI Waste Assistant</h2>
+
+    <p>Let's help the planet, one item at a time!</p>
+
+    <h3>📸 Scan Your Garbage</h3>
+
+    <p id="status">Ready to start!</p>
+
+    <button onclick="startCamera()">
+        Start Camera
+    </button>
+
+    <video id="camera" autoplay playsinline></video>
+
+    <button onclick="takePicture()">
+        Take Picture & Identify
+    </button>
+
+    <canvas id="photo" style="display:none;"></canvas>
+
+    <div id="result"></div>
+
+</div>
+
+<!-- AI libraries -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+<script>
+
+const MODEL_URL =
+"https://teachablemachine.withgoogle.com/models/cG4fjHOyv/";
+
+let model;
+let cameraStream;
+
+async function startCamera() {
+
+    try {
+
+        document.getElementById("status").innerHTML =
+        "Loading SmartBin AI... 🧠";
+
+        if (!model) {
+            model = await tmImage.load(
+                MODEL_URL + "model.json",
+                MODEL_URL + "metadata.json"
+            );
+        }
+
+        document.getElementById("status").innerHTML =
+        "AI is ready! Starting camera...";
+
+        cameraStream =
+        await navigator.mediaDevices.getUserMedia({
+            video: true
+        });
+
+        document.getElementById("camera").srcObject =
+        cameraStream;
+
+        document.getElementById("status").innerHTML =
+        "SmartBin is ready to scan! ♻️";
+
+    } catch (error) {
+
+        document.getElementById("status").innerHTML =
+        "Something went wrong. Please check your internet and camera permissions.";
+
+        console.error(error);
+
+    }
+
+}
+
+async function takePicture() {
+
+    if (!model) {
+        document.getElementById("result").innerHTML =
+        "Please start the camera first!";
+        return;
+    }
+
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("photo");
+
+    if (!video.videoWidth) {
+        document.getElementById("result").innerHTML =
+        "Please wait for the camera to start.";
+        return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context = canvas.getContext("2d");
+
+    context.drawImage(video, 0, 0);
+
+    document.getElementById("result").innerHTML =
+    "SmartBin is thinking... 🧠";
+
+    try {
+
+        const predictions = await model.predict(canvas);
+
+        predictions.sort((a, b) =>
+            b.probability - a.probability
+        );
+
+        const best = predictions[0];
+
+        const confidence =
+        (best.probability * 100).toFixed(1);
+
+        document.getElementById("result").innerHTML =
+        "🌱 SmartBin thinks this is: " +
+        best.className +
+        "<br><br>AI confidence: " +
+        confidence +
+        "%";
+
+    } catch (error) {
+
+        document.getElementById("result").innerHTML =
+        "Sorry! SmartBin couldn't identify the item.";
+
+        console.error(error);
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
